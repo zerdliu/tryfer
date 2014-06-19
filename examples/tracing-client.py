@@ -19,9 +19,11 @@ import sys
 from twisted.internet import reactor
 from twisted.web.client import Agent
 from twisted.python import log
-from tryfer.tracers import push_tracer, DebugTracer, EndAnnotationTracer
+from tryfer.tracers import push_tracer, RawZipkinTracer, ZipkinTracer, DebugTracer, EndAnnotationTracer
 
 from tryfer.http import TracingAgent
+from twisted.internet.endpoints import TCP4ClientEndpoint
+from scrivener import ScribeClient
 
 
 if __name__ == '__main__':
@@ -29,14 +31,15 @@ if __name__ == '__main__':
     log.startLogging(sys.stdout)
 
     # Set up our DebugTracer to print json to stdout.
-    push_tracer(EndAnnotationTracer(DebugTracer(sys.stdout)))
+    client = ScribeClient(TCP4ClientEndpoint(reactor, '127.0.0.1', 9410))
+    push_tracer(EndAnnotationTracer(ZipkinTracer(client)))
 
     def _do():
         # The Agent API is composable so we wrap an Agent in a TracingAgent
         # and every call to TracingAgent.request will result in a client_send,
         # client_receive, and http.uri annotations.
         a = TracingAgent(Agent(reactor))
-        d = a.request('GET', 'http://localhost:8080/README.rst')
+        d = a.request('GET', 'http://localhost:8088/README.rst')
 
         # Print the response code when receive the response.
         d.addCallback(lambda r: print("Received {0} response.".format(r.code)))

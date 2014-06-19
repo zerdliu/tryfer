@@ -23,10 +23,14 @@ from twisted.application import internet, service
 from twisted.web import server, static
 
 from tryfer.http import TracingWrapperResource
-from tryfer.tracers import push_tracer, DebugTracer, EndAnnotationTracer
+from tryfer.tracers import push_tracer, RawZipkinTracer, ZipkinTracer, DebugTracer, EndAnnotationTracer
+from twisted.internet import reactor
+from twisted.internet.endpoints import TCP4ClientEndpoint
+from scrivener import ScribeClient
 
 # Add the debug tracer.
-push_tracer(EndAnnotationTracer(DebugTracer(sys.stdout)))
+client = ScribeClient(TCP4ClientEndpoint(reactor,'127.0.0.1', 9410))
+push_tracer(EndAnnotationTracer(ZipkinTracer(client)))
 
 # Create an application
 application = service.Application("tracing-server")
@@ -37,7 +41,7 @@ application = service.Application("tracing-server")
 # We can pass it a service name argument to be used in the endpoints
 # attached to our annotations.
 service = internet.TCPServer(
-    8080,
+    8088,
     server.Site(
         TracingWrapperResource(
             static.File(os.getcwd()),
